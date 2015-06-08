@@ -208,6 +208,8 @@ public class Distortion_Correction implements PlugIn{
 
 		public boolean applyCorrection = true;
 		public boolean visualizeResults = true;
+		public boolean outputGreyscale = false;
+		public boolean outputRGB = true;
 
 		public int numberOfImages = 9;
 		public int firstImageIndex = 0;
@@ -273,6 +275,8 @@ public class Distortion_Correction implements PlugIn{
 			gd.addNumericField( "lambda :", lambda, 6 );
 			gd.addCheckbox( "apply_correction_to_images", applyCorrection );
 			gd.addCheckbox( "visualize results", visualizeResults );
+			gd.addCheckbox( "greyscale output", outputGreyscale );
+			gd.addCheckbox( "RGB output", outputRGB );
 			final String[] options = new String[]{ "save", "load" };
 			gd.addChoice( "What to do? ", options, options[ saveOrLoad ] );
 			gd.addStringField( "file_name: ", saveFileName );
@@ -286,6 +290,8 @@ public class Distortion_Correction implements PlugIn{
 			lambda = gd.getNextNumber();
 			applyCorrection = gd.getNextBoolean();
 			visualizeResults = gd.getNextBoolean();
+			outputGreyscale = gd.getNextBoolean();
+			outputRGB = gd.getNextBoolean();
 			saveOrLoad = gd.getNextChoiceIndex();
 			saveFileName = gd.getNextString();
 
@@ -700,14 +706,14 @@ public class Distortion_Correction implements PlugIn{
 				IJ.showMessage( "Error! Could not create temporary directory. " + e.getMessage() );
 			}
 		}
-		if ( sp.target_dir == "" || null == sp.target_dir )
-		{
+		// if ( sp.target_dir == "" || null == sp.target_dir )
+		// {
 			final DirectoryChooser dc = new DirectoryChooser( "Target Directory" );
 			sp.target_dir = dc.getDirectory();
 			if ( null == sp.target_dir ) return null;
 			sp.target_dir = sp.target_dir.replace( '\\', '/' );
 			if ( !sp.target_dir.endsWith( "/" ) ) sp.target_dir += "/";
-		}
+		// }
 
 		final String[] namesTarget = new File( sp.target_dir ).list( new FilenameFilter()
 		{
@@ -740,13 +746,29 @@ public class Distortion_Correction implements PlugIn{
 
 						for ( int i = ai.getAndIncrement(); i < ( sp.applyCorrection ? sp.names.length : ( sp.firstImageIndex + sp.numberOfImages ) ); i = ai.getAndIncrement() )
 						{
-							IJ.log( "Correcting image " + sp.names[ i ] );
+							IJ.log( "(updated) Correcting image " + sp.names[ i ] );
+							String extension = "";
+							int index = sp.names[ i ].lastIndexOf('.');
+							if (index > 0) {
+							    extension = sp.names[ i ].substring(index);
+							}
 							final ImagePlus imps = new Opener().openImage( sp.source_dir + sp.names[ i ] );
-							imps.setProcessor( imps.getTitle(), imps.getProcessor().convertToShort( false ) );
-							final ImageProcessor[] transErg = nlt.transform( imps.getProcessor() );
-							imps.setProcessor( imps.getTitle(), transErg[ 0 ] );
-							if ( !sp.applyCorrection ) new File( sp.target_dir + sp.names[ i ] ).deleteOnExit();
-							new FileSaver( imps ).saveAsTiff( sp.target_dir + sp.names[ i ] );
+							if(sp.outputRGB){
+								imps.setProcessor( imps.getTitle(), imps.getProcessor().convertToRGB( ) );
+								final ImageProcessor[] transErg = nlt.transform( imps.getProcessor() );
+								imps.setProcessor( imps.getTitle(), transErg[ 0 ] );
+								new FileSaver( imps ).saveAsTiff( sp.target_dir + sp.names[ i ].replace(extension, ".TIFF") );
+								new FileSaver( imps ).saveAsJpeg( sp.target_dir + sp.names[ i ].replace(extension, ".jpg") );
+							}
+
+							if(sp.outputGreyscale){
+								imps.setProcessor( imps.getTitle(), imps.getProcessor().convertToShort( false ) );
+								final ImageProcessor[] transErg = nlt.transform( imps.getProcessor() );
+								imps.setProcessor( imps.getTitle(), transErg[ 0 ] );
+								if ( !sp.applyCorrection ) new File( sp.target_dir + sp.names[ i ] ).deleteOnExit();
+								new FileSaver( imps ).saveAsTiff( sp.target_dir + sp.names[ i ].replace(extension, "_16bit.TIFF") );
+								new FileSaver( imps ).saveAsJpeg( sp.target_dir + sp.names[ i ].replace(extension, "_16bit.jpg") );
+							}
 						}
 					}
 				};

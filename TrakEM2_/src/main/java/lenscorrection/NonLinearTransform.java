@@ -412,9 +412,9 @@ public class NonLinearTransform extends NonLinearCoordinateTransform {
 	public ImageProcessor[] transform(final ImageProcessor ip){
 		if (!precalculated)
 			this.precalculateTransfom();
-
+		boolean color = false;
 		final ImageProcessor newIp = ip.createProcessor(ip.getWidth(), ip.getHeight());
-		if (ip instanceof ColorProcessor) ip.max(0);
+		if (ip instanceof ColorProcessor) color = true;
 		final ImageProcessor maskIp = new ByteProcessor(ip.getWidth(),ip.getHeight());
 
 		for (int x=0; x < width; x++){
@@ -422,7 +422,10 @@ public class NonLinearTransform extends NonLinearCoordinateTransform {
 				if (transField[x][y][0] == -1){
 					continue;
 				}
-				newIp.set(x, y, (int) ip.getInterpolatedPixel((int)transField[x][y][0],(int)transField[x][y][1]));
+				if(!color)
+					newIp.set(x, y, (int) ip.getInterpolatedPixel((int)transField[x][y][0],(int)transField[x][y][1]));
+				else
+					newIp.set(x, y, (int) ((ColorProcessor)ip).getInterpolatedRGBPixel(transField[x][y][0],transField[x][y][1]));
 				maskIp.set(x,y,255);
 			}
 		}
